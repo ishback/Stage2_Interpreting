@@ -110,8 +110,8 @@ class Image {
   
   PVector getResizeRatio() {
     PVector resizeRatio = new PVector();
-    resizeRatio.x = float(resizedImage.width) / float(croppedImage.width);
-    resizeRatio.y = float(resizedImage.height) / float(croppedImage.height);
+    resizeRatio.x = float(resizedImage.width) / float(croppedImage.width +1);
+    resizeRatio.y = float(resizedImage.height) / float(croppedImage.height+1); //avoid /0
     return resizeRatio;
   }
   
@@ -153,9 +153,9 @@ class Image {
   
   void displayBigResizedCenteredAt(int x, int y) {
     PImage bigResized = pImage.get(0, 0, origW, origH);
-    println("resizedW: " + resizedImage.width + ", " + "croppedW: " + croppedImage.width);
-    println("resizedH: " + resizedImage.height + ", " + "croppedH: " + croppedImage.height);
-    println("resize ratio: " + getResizeRatio());
+    //println("resizedW: " + resizedImage.width + ", " + "croppedW: " + croppedImage.width);
+    //println("resizedH: " + resizedImage.height + ", " + "croppedH: " + croppedImage.height);
+    //println("resize ratio: " + getResizeRatio());
     bigResized.resize(int(origW * getResizeRatio().x), int(origH * getResizeRatio().y));
     imageMode(CENTER);
     PVector centerShift = new PVector();

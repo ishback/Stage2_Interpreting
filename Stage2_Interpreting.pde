@@ -60,9 +60,9 @@ int confidenceMax = 80000;
 float confidence = 0;
 float confidenceThres = 80;
 float confidenceStep = 0;
-float paramEasing = 0.05;
+float paramEasing = 0.10;
 int counter = 0;
-int counterMax = 70;
+int counterMax = 60;
 int counterFound = 0;
 int counterFoundMax = 210;
 int counterCursor = 0;
@@ -78,7 +78,7 @@ int counterTransitioningFade = 120;
 int counterTransitioningWait2 = 140;
 int prevNumPixels = 0;
 int numPixels = 0;
-int thresNumPixels = 5000;
+int thresNumPixels = 7000;
 String name;
 
 ArrayList<Float> confidences;
@@ -100,7 +100,7 @@ boolean waiting = false;
 boolean invert = false;
 boolean cursorON = true;
 boolean imageHasChanged = false;
-boolean useThreshold = true;
+boolean useThreshold = false;
 boolean buttonDown = false;
 boolean pauseProcess = true;
 int dir; //0 sample against model / 1 model against sample
@@ -112,7 +112,7 @@ void setup() {
   background(0);
 
   String[] ards = Arduino.list();
-  println(ards);
+  //println(ards);
   
   // for Mac
   // arduino = new Arduino(this, ards[ards.length - 1], 57600);
@@ -177,7 +177,7 @@ void draw() {
   
   if (pauseProcess) {
     background(0);
-    println("process paused");
+    //println("process paused");
     if (cam.available()) {
       // read a new frame
       cam.read();
@@ -202,7 +202,7 @@ void draw() {
       if ((numPixels > prevNumPixels*1.2 || numPixels*1.5 < prevNumPixels) && numPixels > thresNumPixels){
         imageHasChanged = true;
         prevNumPixels = numPixels;
-        println("IMAGE HAS CHANGED");
+        //println("IMAGE HAS CHANGED");
         counterImageChanging = 0;
       }
       if (imageHasChanged){
@@ -218,7 +218,7 @@ void draw() {
           image(out, 0, 0);
           out.save("data/sample.png");
           newImage = true;
-          println("NEW IMAGE SAVED");
+          //println("NEW IMAGE SAVED");
           counterImageChanging = 0;
           imageHasChanged = false;
           currentModelIndex = 0;
@@ -265,7 +265,7 @@ void draw() {
     } else {
       buttonDown = false;
     }
-    println("buttonDown: " + buttonDown);
+    //println("buttonDown: " + buttonDown);
     
     if (counter == 0) {
       background(0);
@@ -283,15 +283,15 @@ void draw() {
       
 
       // using the new width and height of the small resized MODEL, create a big resized model for display 
-      println("Displaying model " + currentModelIndex);
+      //println("Displaying model " + currentModelIndex);
       tint(white);
       curModel.displayBigResizedCenteredAt(displayW/2, displayH/2);
       
       // using the new width and height of the small resized SAMPLE, create a big resized sample for display 
 //      PImage bigResizedSample = loadImage(smallSample.filename);
-      println("Sample dimensions: " + sample.croppedImage.width + " x " + sample.croppedImage.height);
+      //println("Sample dimensions: " + sample.croppedImage.width + " x " + sample.croppedImage.height);
       tint(ghost);
-      println("display big sample at: " + displayW/2 + ", " + displayH/2);
+      //println("display big sample at: " + displayW/2 + ", " + displayH/2);
       sample.displayBigCenteredAt(displayW/2, displayH/2);
       
       
@@ -311,11 +311,11 @@ void draw() {
       if (confidence > confidences.get(closestModel)){
         closestModel = currentModelIndex;
       }
-      println("confidence: " + confidence);
-      println("confidenceThres: " + confidenceThres);
+      //println("confidence: " + confidence);
+      //println("confidenceThres: " + confidenceThres);
       confidenceStep = 0;
       newImage = false;
-      println("currentModelIndex: " + currentModelIndex + "  numModels: " + numModels);
+      //println("currentModelIndex: " + currentModelIndex + "  numModels: " + numModels);
       counter++;
     } else if (counter < counterMax && counter != 0) {
       counter++;
@@ -379,7 +379,7 @@ void draw() {
         matchFound = false;
         //waiting = true;
         counter = 0;
-        println("END OF FOUND");
+        //println("END OF FOUND");
       }
     }
   } else if (waiting){
@@ -391,7 +391,7 @@ void draw() {
     if (cursorON){
       fill(255);
       rectMode(CENTER);
-      rect(width/2, height/2, 60, 60);
+      rect(width/2, height/2, 100, 100);
       rectMode(CORNER);
     } else {
       background(0);
@@ -461,24 +461,24 @@ void drawBars(){
       fill(255);
     }
     if (i == currentModelIndex){
-      confidenceStep = confidenceStep + (confidences.get(i) - confidenceStep)*0.08;
-      rect(40, 40 + i*30, confidenceStep, 10);
+      confidenceStep = confidenceStep + (confidences.get(i) - confidenceStep)*paramEasing;
+      rect(50, 50 + i*30, confidenceStep, 10);
     } else {
-      rect(40, 40 + i*30, confidences.get(i), 10);
+      rect(50, 50 + i*30, confidences.get(i), 10);
     }
     
     //println("confidence " + i + "= " + confidences.get(i));
   }
-  println("currentModel: " + currentModelIndex);
+  //println("currentModel: " + currentModelIndex);
 }
 
 void calculateDist(int modelNum) {
   distances.append(nn(sample.whitePix, models.get(modelNum).whitePix, modelNum, 0));
   distancesR.append(nn(models.get(modelNum).whitePix, sample.whitePix, modelNum, 1));
-  println("distance: " + distances.get(modelNum) + "  distanceR: " + distancesR.get(modelNum));
+  //println("distance: " + distances.get(modelNum) + "  distanceR: " + distancesR.get(modelNum));
   calculateDiff(modelNum);
   calculateDefinitive(modelNum);
-  println("Diff: " + diffDistances.get(modelNum) + "  Definitive: " + definitive.get(modelNum));
+  //println("Diff: " + diffDistances.get(modelNum) + "  Definitive: " + definitive.get(modelNum));
   if (definitive.get(modelNum) == definitive.min()) {
     nearest = modelNum; //this saves the index of the closest model.
   }
@@ -590,7 +590,7 @@ void resetArrays() {
 
 void loadNewSample() {
   sample = new Image("sample.png", displayW, displayH, ratio);
-  println("Dim sample small: " + sample.smlImage.width + ", " + sample.smlImage.height);
+  //println("Dim sample small: " + sample.smlImage.width + ", " + sample.smlImage.height);
 }
 
 void warpImage() {
@@ -598,7 +598,7 @@ void warpImage() {
   out = attention.focus(cam, cam.width, cam.height);
   int pin = arduino.analogRead(potPin);
   float thresh = map(pin, 0, 1023, 0, 1.3);
-  println("pot: " + pin + ", " + thresh);
+  //println("pot: " + pin + ", " + thresh);
   //float thresh = map(mouseX, 0, height, 0, 1.0);
   out.filter(THRESHOLD, thresh);
   if (invert) {
