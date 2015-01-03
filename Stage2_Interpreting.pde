@@ -45,13 +45,17 @@ void setup() {
   //size(1280, 1024);
   background(0);
   smooth();
-  //cam = new Capture(this, 640, 480, "Logitech Camera", 30);
-  cam = new Capture(this, 640, 480);
+  
+  // For ODroid
+  cam = new Capture(this, 320, 240, "/dev/video0", 30);
+  
+  // For Mac
+//  cam = new Capture(this, 640, 480);
   cam.start();
   // PImage dst = createImage(640, 480, RGB);
   // instantiate focus passing an initial input image
   attention = new Attention(this, cam);
-  out = attention.focus(cam, width, height);
+  out = attention.focus(cam, cam.width, cam.height);
   f = loadFont( "Inconsolata-Regular-14.vlw" );
   textFont(f);  
   
@@ -221,7 +225,7 @@ void loadNewSample(){
 
 void warpImage(){
   // warp the selected region on the input image (cam) to an output image of width x height
-  out = attention.focus(cam, width, height);
+  out = attention.focus(cam, cam.width, cam.height);
   image(out, 0, 0);
   float thresh = map(mouseY, 0, height, 0, 1.0);
   filter(THRESHOLD, thresh);
