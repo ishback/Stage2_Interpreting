@@ -14,6 +14,7 @@ class Image {
   int lowResHeight;
   //float ratio;
   PVector cog; // center of gravity of the image
+  PVector centering; // stores the vector that centers with the sample
   ArrayList<PVector> whitePix;
   ArrayList<PVector> whitePixCentered;
   
@@ -33,13 +34,14 @@ class Image {
     println(filename);
     imgSmall = loadImage(filename);
     imgLarge = loadImage(filename);
-    lowResWidth = int(imgLarge.width / ratio);
-    lowResHeight = int(imgLarge.height / ratio);
+    lowResWidth = int(width / ratio);
+    lowResHeight = int(height / ratio);
     println("lowResWidth: " + lowResWidth);
     println("lowResHeight: " + lowResHeight);
     // keep the high res for display
     // work with a low res for performance
     imgSmall.resize(lowResWidth, lowResHeight);
+    imgLarge.resize(width, height);
     println("smallW: " + imgSmall.width);
     println("smallH: " + imgSmall.height);
     imgSmall.filter(THRESHOLD);
@@ -58,7 +60,36 @@ class Image {
       maxY = max(maxY, dot.y);
       minY = min(minY, dot.y);
     }
+    
     cog.set((maxX - minX)/2 + minX, (maxY - minY)/2 + minY);
+    println("maxX: " + maxX);
+    println("minX: " + minX);
+    println("maxY: " + maxY);
+    println("minY: " + minY);
+    println(cog);
+  }
+  
+  void displayFeatures(color c){
+    stroke(c);
+    noFill();
+    rect((minX+centering.x)*ratio, (minY+centering.y)*ratio, (maxX-minX)*ratio, (maxY-minY)*ratio);
+    noStroke();
+    fill(c);
+    ellipse((cog.x + centering.x)*ratio, (cog.y + centering.y)*ratio, 10, 10);
+    println("cog: " + cog + "  cog.x*ratio: " + cog.x*ratio);
+  }
+  
+  void displayFeaturesSmall(color c){
+    pushMatrix();
+    translate(centering.x, centering.y);
+    stroke(c);
+    noFill();
+    println("maxX: " + maxX);
+    rect(minX, minY, maxX-minX, maxY-minY);
+    noStroke();
+    fill(c);
+    ellipse(cog.x, cog.y, 10, 10);
+    popMatrix();
   }
   
   void displaySmall(color c){
@@ -83,8 +114,12 @@ class Image {
     dest.resize(width, height);
     image(dest, 0, 0);
 */
-    tint(255, 126);
-    //image(imgLarge, posX, posY, width, height);
+    tint(c);
+    image(imgLarge, posX, posY);
+    stroke(c);
+    noFill();
+    rect(posX, posY, width, height);
+    ellipse((cog.x + centering.x)*ratio, (cog.y + centering.y)*ratio, 15, 15);
 
   }
   
@@ -109,25 +144,17 @@ class Image {
     }
   }
   
-  void displayFeatures(){
-    //pushMatrix();
-    //scale(ratio, ratio);
-    stroke(255, 255, 0);
-    noFill();
-    println("maxX: " + maxX);
-    rect(minX, minY, maxX-minX, maxY-minY);
-    noStroke();
-    fill(255, 255, 0);
-    ellipse(cog.x, cog.y, 10, 10);
-    //popMatrix();
-  }
-  
   void storeWhitePixels(){
     for (int i=0; i < imgSmall.width*imgSmall.height; i++){
       if (red(imgSmall.pixels[i]) == 255){ //the pixel is white
         whitePix.add(new PVector(i%imgSmall.width, i/imgSmall.width));
       }
     }
+  }
+  
+  void calcCentering(PVector cogSample){
+    centering = new PVector(cogSample.x, cogSample.y);
+    centering.sub(cog);
   }
   
   void centerImage(PVector center){
