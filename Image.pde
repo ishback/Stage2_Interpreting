@@ -76,7 +76,6 @@ class Image {
     noStroke();
     fill(c);
     ellipse((cog.x + centering.x)*ratio, (cog.y + centering.y)*ratio, 10, 10);
-    println("cog: " + cog + "  cog.x*ratio: " + cog.x*ratio);
   }
   
   void displayFeaturesSmall(color c){
@@ -84,43 +83,28 @@ class Image {
     translate(centering.x, centering.y);
     stroke(c);
     noFill();
-    println("maxX: " + maxX);
     rect(minX, minY, maxX-minX, maxY-minY);
     noStroke();
     fill(c);
-    ellipse(cog.x, cog.y, 10, 10);
+    //ellipse(cog.x, cog.y, 10, 10);
     popMatrix();
   }
   
   void displaySmall(color c){
     tint(255, 126);
     image(imgSmall, 0, 0);
-    rect(0, 0, 10, 10);
   }
   
   void display(int posX, int posY, color c){
-    //int posX = pos%(width/imageW);
-    //int posY = pos/(width/imageW);
-    //pushMatrix();
-    //translate(imageW*posX, imageH*posY);
-    //dest = createImage(lowResWidth, lowResHeight, ARGB);
-    //dest.loadPixels();
-    // this is really expensive, selecting pixels instead of image.display
-    // is there another way to display just the white pixels with alpha?
-    
-    
-    /*
-    dest.updatePixels();
-    dest.resize(width, height);
-    image(dest, 0, 0);
-*/
     tint(c);
     image(imgLarge, posX, posY);
-    stroke(c);
-    noFill();
-    rect(posX, posY, width, height);
-    ellipse((cog.x + centering.x)*ratio, (cog.y + centering.y)*ratio, 15, 15);
-
+    
+    if (debugView){
+      stroke(c);
+      noFill();
+      //rect(posX, posY, width, height);
+      ellipse((cog.x + centering.x)*ratio, (cog.y + centering.y)*ratio, 15, 15);
+    }
   }
   
   void displayWhitePixCentered(){
