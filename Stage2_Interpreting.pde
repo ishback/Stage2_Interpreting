@@ -6,7 +6,10 @@ Attention attention;
 Capture cam;
 PImage out;
 PImage src, dst;
+PImage temp, prevTemp;
+PVector centroid, prevCentroid;
 OpenCV opencv;
+// A list of all the contours found by OpenCV
 ArrayList<Contour> contours;
 
 int camW = 640;
@@ -23,13 +26,16 @@ color green = color(0, 255, 0);
 color ghost = color(255, 50);
 color white = color(255);
 PFont f;
+PFont bold;
+PFont text;
 int numModels;
 int currentModel = 0;
+int closestModel = 0;
 int nearest;
 int smallW;
 int smallH;
 float confidence = 0;
-float confidenceThres = 0;
+float confidenceThres = 90;
 float confidenceStep = 0;
 int counter = 0;
 int counterMax = 140;
@@ -37,11 +43,26 @@ int counterFound = 0;
 int counterFoundMax = 250;
 int counterCursor = 0;
 int counterCursorMax = 60;
+int counterWatching = 0;
+int counterWatchingMax = 10;
+int counterImageChanging = 0;
+int counterImageChangingMax = 10; // freq of checking new image is counterWatchingMax*counterImageChangingMax
+int counterTransitioning = 0;
+int counterTransitioningWait1 = 140;
+int counterTransitioningFade = 200;
+int counterTransitioningWait2 = 260;
+int prevNumPixels = 0;
+int numPixels = 0;
+int thresNumPixels = 5000;
+String name;
+
+ArrayList<Float> confidences;
 
 // record a new image and recalculate nearest neighbor -- press 'r' to record
 boolean newImage = false;
 // show what the camera is seeing -- press 'v' to toggle
 boolean camView = true;
+boolean transitioning = false;
 // compare the saple with the models
 boolean comparing = false;
 // shows small slow res images on top left corner
@@ -51,13 +72,16 @@ boolean matchFound = false;
 // wait with a cursor until a rectangle blob 'image sent' is detected
 boolean waiting = false;
 // whether or not to invert the thresholded image -- press 'i' to toggle
-boolean invert = false;
+boolean invert = true;
 boolean cursorON = true;
+boolean imageHasChanged = false;
 int dir; //0 sample against model / 1 model against sample
 
-void setup() {
-  size(1024/2, 768/2); // 512, 384
 
+/////////////////////////////////////////////////////////////////////////////  SETUP
+void setup() {
+  //size(1024/2, 768/2); // 512, 384
+  size(640, 480);
   //size(1280, 1024);
   background(0);
   smooth();
@@ -67,19 +91,25 @@ void setup() {
 
   // For Mac
   cam = new Capture(this, 640, 480);
+  //cam = new Capture(this, 640, 480, "Logitech Camera", 30);
   cam.start();
   // PImage dst = createImage(640, 480, RGB);
   // instantiate focus passing an initial input image
   attention = new Attention(this, cam);
   out = attention.focus(cam, cam.width, cam.height);
+  opencv = new OpenCV(this, out);
   f = loadFont( "Inconsolata-Regular-14.vlw" );
-  textFont(f);  
+  text = loadFont("FuturaStd-Book-26.vlw");
+  bold = loadFont("FuturaStd-ExtraBold-48.vlw");
+  textFont(f);
+  textFont(bold);
 
   // load all the model images and calculate its features
   java.io.File modelFolder = new java.io.File(dataPath("models"));
   String[] modelFilenamesTemp = modelFolder.list();
   sample = new Image();
   models = new ArrayList<Image>();
+  confidences = new ArrayList<Float>();
   for (int i = 0; i < modelFilenamesTemp.length; i++) {
     if (!modelFilenamesTemp[i].startsWith(".")) {
       models.add(new Image());
@@ -98,37 +128,84 @@ void setup() {
   definitive = new FloatList(); // weighted result.
 
   // to delete after testing
-  newImage = true;
+  newImage = false;
   camView = false;
 }
 
+/////////////////////////////////////////////////////////////////////////////  DRAW
 void draw() {
-
-  if (camView) {
+  counterWatching++;
+  if (counterWatching >= counterWatchingMax){
     if (cam.available()) {
       // read a new frame
       cam.read();
-      // warp using library. invert if needed -- toggle with 'i'
       warpImage();
+      //image(out, 0, 0);
+      
+      numPixels = countPixels(out);
+      //println("numPixels: " + numPixels);
+      //println("prevNumPixels: " + prevNumPixels);
+      
+      
+      if ((numPixels > prevNumPixels*1.2 || numPixels*1.5 < prevNumPixels) && numPixels > thresNumPixels){
+        imageHasChanged = true;
+        prevNumPixels = numPixels;
+        println("IMAGE HAS CHANGED");
+        counterImageChanging = 0;
+      }
+      if (imageHasChanged){
+        if (counterImageChanging < counterImageChangingMax){
+          counterImageChanging++;
+          println("counterImageChanging: " + counterImageChanging);
+          background(0);
+          waiting = true;
+          transitioning = false;
+          comparing = false;
+        } else { // image has changed and has been stable for a while -> use it as new sample
+          image(out, 0, 0);
+          out.save("/Users/ishac/Documents/Processing/Stage2_Interpreting/data/sample.png");
+          newImage = true;
+          println("NEW IMAGE SAVED");
+          counterImageChanging = 0;
+          imageHasChanged = false;
+          currentModel = 0;
+          confidences.clear();
+          closestModel = 0;
+        }
+      }
     }
-  } else if (newImage) {
-    background(0);
+    counterWatching = 0;
+  }
+  if (newImage) {
     reset();
     loadNewSample();
+    background(0);
+    image(out, 0, 0);
     newImage = false;
-    comparing = true;
+    transitioning = true;
+  } else if (transitioning){
+    println("counterTransitioning: " + counterTransitioning);
+    if (counterTransitioning <= counterTransitioningWait1){
+      counterTransitioning++;
+    } else if (counterTransitioning <= counterTransitioningFade){
+      fill(0, 5);
+      rect(0, 0, width, height);
+      counterTransitioning++;
+    } else if (counterTransitioning <= counterTransitioningWait2){
+      counterTransitioning++;
+    } else if (counterTransitioning > counterTransitioningWait2){
+      comparing = true;
+      transitioning = false;
+      counterTransitioning = 0;
+    }
   } else if (comparing) {
     readConfidenceThres();
-    drawConfidence();
+    
     if (counter == 0) {
       background(0);
       // calculate centering vectors of models to new sample. center the WhitePix
       models.get(currentModel).calcCentering(sample.cog);
       models.get(currentModel).centerImage(sample.cog);
-
-      // tests with blend
-      //image(sample.imgLarge, 0, 0);
-      //blend(models.get(currentModel).imgLarge, 0, 0, width, height, 0, 0, width, height, SUBTRACT);
 
       // display the model, centered to the sample
       models.get(currentModel).display(int(models.get(currentModel).centering.x)*ratio, int(models.get(currentModel).centering.y)*ratio, white);
@@ -138,7 +215,11 @@ void draw() {
 
       // calculate distances to sample
       calculateDist(currentModel);
-      confidence = map(definitive.get(currentModel), 5000, 30000, 100, 0);
+      confidence = map(definitive.get(currentModel), 5000, 60000, 100, 0);
+      confidences.add(confidence);
+      if (confidence > confidences.get(closestModel)){
+        closestModel = currentModel;
+      }
       println("confidence: " + confidence);
       println("confidenceThres: " + confidenceThres);
       confidenceStep = 0;
@@ -148,35 +229,64 @@ void draw() {
     } else if (counter < counterMax && counter != 0) {
       counter++;
     } else if (counter >= counterMax){
-      if (confidence > confidenceThres){
-        comparing = false;
-        matchFound = true;
-        counterFound = 0;
-      } else if (currentModel < numModels - 1) {
+//      if (confidence > confidenceThres){
+//        comparing = false;
+//        matchFound = true;
+//        counterFound = 0;
+//        String[] q = splitTokens(models.get(currentModel).filename, "/");
+//        println(q[1]);
+//        String[] t = splitTokens(q[1], ".");
+//        name = new String(t[0]);
+//      } else 
+      if (currentModel < numModels - 1) {
       counter = 0;
       currentModel++;
       } else if (currentModel == numModels - 1) {
-      //comparing = false;
+      comparing = false;
+      matchFound = true;
       counter = 0;
+      counterFound = 0;
       currentModel = 0;
       }
     }
-    if (debugView && counter !=0) {
+    //if (debugView && counter !=0) {
+    if (debugView) {
       //display features
-      sample.displayFeatures(green);
-      models.get(currentModel).displayFeatures(white);
+      //sample.displayFeatures(green);
+      //models.get(currentModel).displayFeatures(white);
       // display small images with WhitePixels
       //sample.displayWhitePix();
-      sample.displayFeaturesSmall(green);
-      models.get(currentModel).displayFeaturesSmall(white);
+      //sample.displayFeaturesSmall(green);
+      //models.get(currentModel).displayFeaturesSmall(white);
       //models.get(currentModel).displayWhitePixCentered();
       // display the Small images
       //models.get(0).displaySmall(white);
       //sample.displaySmall(white);
+      showTrueView();
+      drawConfidence();
+      drawBars();
+      pushMatrix();
+      translate(width - 120, height-60);
+      fill(255, 0, 255);
+      textFont(f);
+      text(confidence, 0, 0);
+      popMatrix();
     }
   } else if (matchFound){
     if (counterFound < counterFoundMax*0.5){
-      models.get(currentModel).display(int(models.get(currentModel).centering.x)*ratio, int(models.get(currentModel).centering.y)*ratio, white);
+      //models.get(currentModel).display(int(models.get(currentModel).centering.x)*ratio, int(models.get(currentModel).centering.y)*ratio, white);
+      background(0);
+      sample.display(0, 0, ghost);
+      String[] q = splitTokens(models.get(closestModel).filename, "/");
+      println(q[1]);
+      String[] t = splitTokens(q[1], ".");
+      name = new String(t[0]);
+      fill(255);
+      textAlign(CENTER, CENTER);
+      textFont(text);
+      text("This looks like a", width/2, height/2 - 50);
+      textFont(bold);
+      text(name, width/2, height/2);
       counterFound++;
     } else if (counterFound >= counterFound*0.6){
       noStroke();
@@ -185,13 +295,13 @@ void draw() {
       counterFound++;
       if (counterFound >= counterFoundMax){
         matchFound = false;
-        waiting = true;
+        //waiting = true;
         counter = 0;
         println("END OF FOUND");
       }
     }
   } else if (waiting){
-    println("WAITING");
+    //println("WAITING");
     if (counterCursor == counterCursorMax){
       cursorON = !cursorON;
       counterCursor = 0;
@@ -206,6 +316,14 @@ void draw() {
     }
     counterCursor++;
   }
+  
+  //image(out, width/4, 0, width/4, height/4);
+}
+
+
+/////////////////////////////////////////////////////////////////////////////  FUNCTIONS
+void showTrueView(){
+  image(out, 0, 0, width/4, height/4);
 }
 
 void readConfidenceThres() {
@@ -216,15 +334,35 @@ void drawConfidence() {
   noStroke();
   fill(0);
   rect(width-50, 0, width, height);
-  stroke(255);
+  stroke(0, 255, 0);
   noFill();
   rect(width-30, height-40, 10, -(height-80));
   // draw confidence threshold
-  stroke(255);
+  stroke(0, 255, 0);
   line(width-40, map(confidenceThres, 0, 100, height-40, 40), width-10, map(confidenceThres, 0, 100, height-40, 40));
-  fill(255);
+  fill(0, 255, 0);
   confidenceStep = confidenceStep + (confidence - confidenceStep)*0.05;
   rect(width-30, height-40, 10, -(map(confidenceStep, 0, 100, 0, height - 80)));
+}
+
+void drawBars(){
+  noStroke();
+  for (int i=0; i < confidences.size(); i++){
+    image(models.get(i).imgSmall, 5, 36 + i*30 + 300, 20, 16);
+    if (i == closestModel){
+      fill(0, 255, 0);
+    } else {
+      fill(250);
+    }
+    if (i == currentModel){
+      confidenceStep = confidenceStep + (confidences.get(i) - confidenceStep)*0.05;
+      rect(30, 40 + i*30 + 300, confidenceStep, 10);
+    } else {
+      rect(30, 40 + i*30 + 300, confidences.get(i), 10);
+    }
+    
+    println("confidence " + i + "= " + confidences.get(i));
+  }
 }
 
 void calculateDist(int modelNum) {
@@ -241,24 +379,24 @@ void calculateDist(int modelNum) {
 
 void calculateDiff(int modelNum) {
   diffDistances.append(abs(distances.get(modelNum) - distancesR.get(modelNum)));
-  if (debugView){
-    pushMatrix();
-    translate(width-120, height - 60);
-    fill(255);
-    text(diffDistances.get(modelNum), 0, 0);
-    popMatrix();
-  }
+//  if (debugView){
+//    pushMatrix();
+//    translate(width-120, height - 60);
+//    fill(255);
+//    text(diffDistances.get(modelNum), 0, 0);
+//    popMatrix();
+//  }
 }
 
 void calculateDefinitive(int modelNum) {
   definitive.append(distances.get(modelNum) + distancesR.get(modelNum) + diffDistances.get(modelNum));
-  if (debugView){
-    pushMatrix();
-    translate(width - 120, height-40);
-    fill(255);
-    text(definitive.get(modelNum), 0, 0);
-    popMatrix();
-  }
+//  if (debugView){
+//    pushMatrix();
+//    translate(width - 120, height-40);
+//    fill(255);
+//    text(definitive.get(modelNum), 0, 0);
+//    popMatrix();
+//  }
 }
 
 float nn (ArrayList<PVector> arraySample, ArrayList<PVector> arrayModel, int pos, int dir) {
@@ -285,11 +423,13 @@ float nn (ArrayList<PVector> arraySample, ArrayList<PVector> arrayModel, int pos
       } else {
         c = color(255, 0, 255, 30);
       }
-      stroke(c);
-      //pushMatrix();
-      //translate(imageW*posX, imageH*posY);
-      line(s.x, s.y, closest.x, closest.y);
-      fill(0, 255, 255);
+      //stroke(c);
+      //line(s.x, s.y, closest.x, closest.y);
+      //line((s.x+sample.centering.x)*ratio, (s.y+sample.centering.y)*ratio, (closest.x+models.get(pos).centering.x)*ratio, (closest.y+models.get(pos).centering.y)*ratio);
+      if (dir==0){
+        stroke(0, 255, 0);
+        line((s.x)*ratio, (s.y)*ratio, (closest.x)*ratio, (closest.y)*ratio);
+      }
       //popMatrix();
     }
     totalDist += dist;
@@ -304,7 +444,7 @@ float nn (ArrayList<PVector> arraySample, ArrayList<PVector> arrayModel, int pos
       translate(width - 120, height-100);
       fill(255, 0, 255);
     } 
-  
+    textFont(f);
     text(totalDist, 0, 0);
     popMatrix();
   }
@@ -313,7 +453,7 @@ float nn (ArrayList<PVector> arraySample, ArrayList<PVector> arrayModel, int pos
 
 void reset(){
   confidence = 0;
-  confidenceThres = 0;
+  //confidenceThres = 0;
   confidenceStep = 0;
   resetArrays();
 }
@@ -323,6 +463,7 @@ void resetArrays() {
   distancesR.clear();
   diffDistances.clear();
   definitive.clear();
+  confidences.clear();
 }
 
 void loadNewSample() {
@@ -338,17 +479,17 @@ void loadNewSample() {
 void warpImage() {
   // warp the selected region on the input image (cam) to an output image of width x height
   out = attention.focus(cam, cam.width, cam.height);
-  image(out, 0, 0);
   float thresh = map(mouseX, 0, height, 0, 1.0);
-  filter(THRESHOLD, thresh);
+  out.filter(THRESHOLD, thresh);
   if (invert) {
-    filter(INVERT);
+    out.filter(INVERT);
   }
 }
 
 void keyPressed() {
   if (key == 'R' || key == 'r') {
-    //saveFrame("/Users/ishac/Documents/Processing/Stage2_Interpreting/data/sample.jpg");
+    saveFrame("/Users/ishac/Documents/Processing/Stage2_Interpreting_SeeInside_auto/data/sample.jpg");
+    out.save("/Users/ishac/Documents/Processing/Stage2_Interpreting_SeeInside_auto/data/sample.png");
     newImage = true;
     camView = false;
     waiting = false;
@@ -363,3 +504,13 @@ void keyPressed() {
   }
 }
 
+int countPixels(PImage img){
+  img.loadPixels();
+  int numPix = 0;
+  for (int i=0; i < img.pixels.length; i++){
+    if (red(img.pixels[i]) == 255){
+      numPix++;
+    }
+  }
+  return numPix;
+}
