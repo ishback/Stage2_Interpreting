@@ -2,16 +2,18 @@ class Image {
   String filename;
   PImage imgSmall;
   PImage imgLarge;
-  PImage scaled;
+  PImage imgResized;
   PImage dest;
-  float maxX = 0;
-  float minX = width;
-  float maxY = 0;
-  float minY = height;
+  int maxX = 0;
+  int minX = width;
+  int maxY = 0;
+  int minY = height;
   float w;
   float h;
   int lowResWidth;
   int lowResHeight;
+  float ratioW = 1;
+  float ratioH = 1;
   //float ratio;
   PVector cog; // center of gravity of the image
   PVector centering; // stores the vector that centers with the sample
@@ -45,22 +47,27 @@ class Image {
     println("smallW: " + imgSmall.width);
     println("smallH: " + imgSmall.height);
     imgSmall.filter(THRESHOLD);
+    
+    imgResized = createImage(lowResWidth, lowResHeight, RGB);
+    imgResized.copy(imgSmall, 0, 0, lowResWidth, lowResHeight, 0, 0, lowResWidth, lowResHeight);
     whitePix = new ArrayList<PVector>();
     whitePixCentered = new ArrayList<PVector>();
-    storeWhitePixels();
+    
     cog = new PVector(0,0);
   }
   
   // calculates features on small Image
-  void calculateFeatures(){
+  void calculateBB(){
     for (int i=0; i < whitePix.size(); i++){
       PVector dot = new PVector(whitePix.get(i).x, whitePix.get(i).y);
-      maxX = max(maxX, dot.x);
-      minX = min(minX, dot.x);
-      maxY = max(maxY, dot.y);
-      minY = min(minY, dot.y);
+      maxX = int(max(maxX, dot.x));
+      minX = int(min(minX, dot.x));
+      maxY = int(max(maxY, dot.y));
+      minY = int(min(minY, dot.y));
     }
-    
+  }
+  
+  void calculateCOG(){
     cog.set((maxX - minX)/2 + minX, (maxY - minY)/2 + minY);
     println("maxX: " + maxX);
     println("minX: " + minX);
@@ -97,7 +104,7 @@ class Image {
   
   void display(int posX, int posY, color c){
     tint(c);
-    image(imgLarge, posX, posY);
+    image(imgLarge, posX, posY, imgLarge.width*ratioW, imgLarge.height*ratioH);
     
     if (debugView){
       stroke(c);
@@ -128,10 +135,19 @@ class Image {
     }
   }
   
-  void storeWhitePixels(){
+  void storeWhitePixelsSmall(){
     for (int i=0; i < imgSmall.width*imgSmall.height; i++){
       if (red(imgSmall.pixels[i]) == 255){ //the pixel is white
         whitePix.add(new PVector(i%imgSmall.width, i/imgSmall.width));
+      }
+    }
+  }
+  
+  void storeWhitePixelsResized(){
+    whitePix.clear();
+    for (int i=0; i < imgResized.width*imgResized.height; i++){
+      if (red(imgResized.pixels[i]) == 255){ //the pixel is white
+        whitePix.add(new PVector(i%imgResized.width, i/imgResized.width));
       }
     }
   }
@@ -152,4 +168,24 @@ class Image {
       whitePixCentered.add(temp);
     }
   }
+  
+  void scaleImage(int sampleMaxX, int sampleMinX, int sampleMaxY, int sampleMinY){
+    imgResized.copy(imgSmall, 0, 0, lowResWidth, lowResHeight, 0, 0, lowResWidth, lowResHeight);
+    ratioW = float(sampleMaxX - sampleMinX)/float(maxX - minX);
+    ratioH = float(sampleMaxY - sampleMinY)/float(maxY - minY);
+    println("maxX: " + maxX);
+    println("minX: " + minX);
+    println("maxY: " + maxY);
+    println("minY: " + minY);
+    println("sampleMaxX: " + sampleMaxX);
+    println("sampleMinX: " + sampleMinX);
+    println("sampleMaxY: " + sampleMaxY);
+    println("sampleMinY: " + sampleMinY);
+    println("ratioW: " + ratioW);
+    println("ratioH: " + ratioH);
+    imgResized.resize(int(imgSmall.width*ratioW), int(imgSmall.height*ratioH));
+  }
+    
+  
+  
 }

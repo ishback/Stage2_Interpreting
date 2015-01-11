@@ -72,7 +72,7 @@ boolean matchFound = false;
 // wait with a cursor until a rectangle blob 'image sent' is detected
 boolean waiting = false;
 // whether or not to invert the thresholded image -- press 'i' to toggle
-boolean invert = true;
+boolean invert = false;
 boolean cursorON = true;
 boolean imageHasChanged = false;
 int dir; //0 sample against model / 1 model against sample
@@ -115,7 +115,8 @@ void setup() {
       models.add(new Image());
       models.get(i).filename = "models/" + modelFilenamesTemp[i];
       models.get(i).update();
-      models.get(i).calculateFeatures();
+      models.get(i).storeWhitePixelsSmall();
+      models.get(i).calculateBB();
       println("maxX " + i + ": " + models.get(i).maxX);
     }
   }
@@ -203,13 +204,22 @@ void draw() {
     
     if (counter == 0) {
       background(0);
+      Image currModel = models.get(currentModel);
       // calculate centering vectors of models to new sample. center the WhitePix
-      models.get(currentModel).calcCentering(sample.cog);
-      models.get(currentModel).centerImage(sample.cog);
+      currModel.scaleImage(sample.maxX, sample.minX, sample.maxY, sample.minY);
+      currModel.storeWhitePixelsResized();
+      currModel.calculateBB();
+      currModel.calculateCOG();
+      currModel.calcCentering(sample.cog);
+      currModel.centerImage(sample.cog);
+      
 
       // display the model, centered to the sample
-      models.get(currentModel).display(int(models.get(currentModel).centering.x)*ratio, int(models.get(currentModel).centering.y)*ratio, white);
+      imageMode(CENTER);
       
+      //currModel.display(int(currModel.centering.x*currModel.ratioW + currModel.imgResized.width/2)*ratio, int(currModel.centering.y*currModel.ratioH + currModel.imgResized.height/2)*ratio, white);
+      currModel.display(int(currModel.centering.x)*ratio, int(currModel.centering.y)*ratio, white);
+      imageMode(CORNER);
       // display the new sample
       sample.display(0, 0, ghost);
 
@@ -308,6 +318,7 @@ void draw() {
     }
     if (cursorON){
       fill(255);
+      noStroke();
       rectMode(CENTER);
       rect(width/2, height/2, 40, 40);
       rectMode(CORNER);
@@ -471,7 +482,9 @@ void loadNewSample() {
   sample.filename = "sample.png"; // static image for testing
   sample.update();
   sample.reset();
-  sample.calculateFeatures();
+  sample.storeWhitePixelsSmall();
+  sample.calculateBB();
+  sample.calculateCOG();
   sample.centerImage(sample.cog);
   sample.centering = new PVector(0, 0);
 }
