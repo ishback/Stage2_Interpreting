@@ -19,9 +19,11 @@ int camH = 240;
 
 PImage fullSizeSample;
 Image smallSample;
-ArrayList<PImage> fullSizeModels;
-ArrayList<Image> smallModels;
-ArrayList<Image> resizedModels;
+//ArrayList<PImage> fullSizeModels;
+//ArrayList<Image> smallModels;
+//ArrayList<Image> resizedModels;
+ArrayList<Image> models;
+Image sample;
 
 FloatList distances;
 FloatList distancesR; //reverse order
@@ -39,7 +41,7 @@ PFont bold;
 PFont text;
 
 int numModels;
-int currentModel = 0;
+int currentModelIndex = 0;
 int closestModel = 0;
 int nearest;
 
@@ -115,22 +117,22 @@ void setup() {
   java.io.File modelFolder = new java.io.File(dataPath("models"));
   String[] modelFilenamesTemp = modelFolder.list();
 //  fullSizeSample = createImage(camW, camH, RGB);
-  fullSizeModels = new ArrayList<PImage>();
-  smallModels = new ArrayList<Image>();
-  resizedModels = new ArrayList<Image>();
+  models = new ArrayList<Image>();
+//  
+//  fullSizeModels = new ArrayList<PImage>();
+//  smallModels = new ArrayList<Image>();
+//  resizedModels = new ArrayList<Image>();
   
   confidences = new ArrayList<Float>();
   for (int i = 0; i < modelFilenamesTemp.length; i++) {
     if (!modelFilenamesTemp[i].startsWith(".")) {
       String filename = "models/" + modelFilenamesTemp[i];
-      fullSizeModels.add(loadImage(filename));
-      smallModels.add(new Image(fullSizeModels.get(i), displayW/ratio, displayH/ratio));
-      smallModels.get(i).filename = filename;
+      models.add(new Image(filename, displayW, displayH, ratio));
     }
   }
   
   
-  numModels = fullSizeModels.size();
+  numModels = models.size();
   distances = new FloatList();
   distancesR = new FloatList();
   diffDistances = new FloatList();
@@ -172,12 +174,12 @@ void draw() {
           comparing = false;
         } else { // image has changed and has been stable for a while -> use it as new sample
           image(out, 0, 0);
-          out.save("/Users/ishac/Documents/Processing/Stage2_Interpreting/data/sample.png");
+          out.save("sample.png");
           newImage = true;
           println("NEW IMAGE SAVED");
           counterImageChanging = 0;
           imageHasChanged = false;
-          currentModel = 0;
+          currentModelIndex = 0;
           confidences.clear();
           closestModel = 0;
         }
@@ -212,49 +214,53 @@ void draw() {
     
     if (counter == 0) {
       background(0);
-      Image currSmallModel = smallModels.get(currentModel);
-      // calculate centering vectors of models to new sample. center the WhitePix
-//      currModel.calcCentering(sample.cog);
-//      currModel.centerImage(sample.cog);
-
-      float sampleToModelRatioW = currSmallModel.bb.width / smallSample.bb.width;
-      float sampleToModelRatioH = currSmallModel.bb.height / smallSample.bb.height;
-
-      Image resizedModelImage = new Image(loadImage(smallModels.get(currentModel).filename), int(sampleToModelRatioW * displayW/ratio), int(sampleToModelRatioH * displayH/ratio));
-
-      //  from small model to resized model
-      float resizeRatioW = resizedModels.get(currentModel).getWidth() / currSmallModel.getWidth();
-      float resizeRatioH = resizedModels.get(currentModel).getHeight() / currSmallModel.getHeight();
-
-      // using the new width and height of the small resized MODEL, create a big resized model for display 
-      PImage bigResizedModel = loadImage(smallModels.get(currentModel).filename);
-      bigResizedModel.resize(resizedModelImage.getWidth()*ratio, resizedModelImage.getHeight()*ratio);
+      Image curModel = models.get(currentModelIndex);
       
-      imageMode(CENTER);
-      PVector bigResizedCenterModel = new PVector(resizedModelImage.getCenter().x * ratio, resizedModelImage.getCenter().y * ratio);
+      float cropepdSampleToModelRatioW = sample.croppedImage.width / curModel.croppedImage.width;
+      float cropepdSampleToModelRatioH = sample.croppedImage.height / curModel.croppedImage.height;
+
+      // resize cropped model to match cropped sample
+      curModel.generateResized(sample.croppedImage.width, sample.croppedImage.height);
+
+      //  from small model to resized model, get from model
+      float resizeRatioW = curModel.getResizeRatio().x;
+      float resizeRatioH = curModel.getResizeRatio().y;
+      
+      
+//
+//      // using the new width and height of the small resized MODEL, create a big resized model for display 
+//      PImage bigResizedModel = loadImage(smallModels.get(currentModelIndex).filename);
+//      bigResizedModel.resize(resizedModelImage.getWidth()*ratio, resizedModelImage.getHeight()*ratio);
       tint(white);
-      image(bigResizedModel, displayW/2 - bigResizedCenterModel.x, displayH/2 - bigResizedCenterModel.y);
+      curModel.displayBigResizedCenteredAt(displayW/2, displayH/2);
+      
+//      PVector bigResizedCenterModel = new PVector(resizedModelImage.getCenter().x * ratio, resizedModelImage.getCenter().y * ratio);
+//      tint(white);
+//      image(bigResizedModel, displayW/2 - bigResizedCenterModel.x, displayH/2 - bigResizedCenterModel.y);
       
       // using the new width and height of the small resized SAMPLE, create a big resized sample for display 
-      PImage bigResizedSample = loadImage(smallSample.filename);
-      
-      PVector bigResizedCenterSample = new PVector(smallSample.getCenter().x * ratio, smallSample.getCenter().y * ratio);
+//      PImage bigResizedSample = loadImage(smallSample.filename);
       tint(ghost);
-      image(bigResizedSample, displayW/2 - bigResizedCenterSample.x, displayH/2 - bigResizedCenterSample.y);
+      println("display big sample at: " + displayW/2 + ", " + displayH/2);
+      sample.displayBigCenteredAt(displayW/2, displayH/2);
+      
+//      PVector bigResizedCenterSample = new PVector(smallSample.getCenter().x * ratio, smallSample.getCenter().y * ratio);
+//      tint(ghost);
+//      image(bigResizedSample, displayW/2 - bigResizedCenterSample.x, displayH/2 - bigResizedCenterSample.y);
       
       
       // calculate distances to sample
-      calculateDist(currentModel);
-      confidence = map(definitive.get(currentModel), 5000, 60000, 100, 0);
+      calculateDist(currentModelIndex);
+      confidence = map(definitive.get(currentModelIndex), 5000, 60000, 100, 0);
       confidences.add(confidence);
       if (confidence > confidences.get(closestModel)){
-        closestModel = currentModel;
+        closestModel = currentModelIndex;
       }
       println("confidence: " + confidence);
       println("confidenceThres: " + confidenceThres);
       confidenceStep = 0;
       newImage = false;
-      println("currentModel: " + currentModel + "  numModels: " + numModels);
+      println("currentModelIndex: " + currentModelIndex + "  numModels: " + numModels);
       counter++;
     } else if (counter < counterMax && counter != 0) {
       counter++;
@@ -263,32 +269,32 @@ void draw() {
 //        comparing = false;
 //        matchFound = true;
 //        counterFound = 0;
-//        String[] q = splitTokens(models.get(currentModel).filename, "/");
+//        String[] q = splitTokens(models.get(currentModelIndex).filename, "/");
 //        println(q[1]);
 //        String[] t = splitTokens(q[1], ".");
 //        name = new String(t[0]);
 //      } else 
-      if (currentModel < numModels - 1) {
+      if (currentModelIndex < numModels - 1) {
       counter = 0;
-      currentModel++;
-      } else if (currentModel == numModels - 1) {
+      currentModelIndex++;
+      } else if (currentModelIndex == numModels - 1) {
       comparing = false;
       matchFound = true;
       counter = 0;
       counterFound = 0;
-      currentModel = 0;
+      currentModelIndex = 0;
       }
     }
     //if (debugView && counter !=0) {
     if (debugView) {
       //display features
       //sample.displayFeatures(green);
-      //models.get(currentModel).displayFeatures(white);
+      //models.get(currentModelIndex).displayFeatures(white);
       // display small images with WhitePixels
       //sample.displayWhitePix();
       //sample.displayFeaturesSmall(green);
-      //models.get(currentModel).displayFeaturesSmall(white);
-      //models.get(currentModel).displayWhitePixCentered();
+      //models.get(currentModelIndex).displayFeaturesSmall(white);
+      //models.get(currentModelIndex).displayWhitePixCentered();
       // display the Small images
       //models.get(0).displaySmall(white);
       //sample.displaySmall(white);
@@ -304,7 +310,7 @@ void draw() {
     }
   } else if (matchFound){
     if (counterFound < counterFoundMax*0.5){
-      //models.get(currentModel).display(int(models.get(currentModel).centering.x)*ratio, int(models.get(currentModel).centering.y)*ratio, white);
+      //models.get(currentModelIndex).display(int(models.get(currentModelIndex).centering.x)*ratio, int(models.get(currentModelIndex).centering.y)*ratio, white);
       background(0);
       sample.display(0, 0, ghost);
       String[] q = splitTokens(models.get(closestModel).filename, "/");
@@ -378,13 +384,13 @@ void drawConfidence() {
 void drawBars(){
   noStroke();
   for (int i=0; i < confidences.size(); i++){
-    image(models.get(i).imgSmall, 5, 36 + i*30 + 300, 20, 16);
+    image(models.get(i).smlImage, 5, 36 + i*30 + 300, 20, 16);
     if (i == closestModel){
       fill(0, 255, 0);
     } else {
       fill(250);
     }
-    if (i == currentModel){
+    if (i == currentModelIndex){
       confidenceStep = confidenceStep + (confidences.get(i) - confidenceStep)*0.05;
       rect(30, 40 + i*30 + 300, confidenceStep, 10);
     } else {
@@ -396,8 +402,8 @@ void drawBars(){
 }
 
 void calculateDist(int modelNum) {
-  distances.append(nn(sample.whitePix, models.get(modelNum).whitePixCentered, modelNum, 0));
-  distancesR.append(nn(models.get(modelNum).whitePixCentered, sample.whitePix, modelNum, 1));
+  distances.append(nn(sample.whitePix, models.get(modelNum).whitePix, modelNum, 0));
+  distancesR.append(nn(models.get(modelNum).whitePix, sample.whitePix, modelNum, 1));
   println("distance: " + distances.get(modelNum) + "  distanceR: " + distancesR.get(modelNum));
   calculateDiff(modelNum);
   calculateDefinitive(modelNum);
@@ -497,8 +503,7 @@ void resetArrays() {
 }
 
 void loadNewSample() {
-  fullSizeSample = loadImage("sample.png");
-  smallSample = new Image(loadImage("sample.png"), displayW/ratio, displayH/ratio);
+//  sample = new Image("sample.png", displayW, displayH, ratio);
 }
 
 void warpImage() {
