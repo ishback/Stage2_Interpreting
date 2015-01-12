@@ -174,7 +174,7 @@ void draw() {
           comparing = false;
         } else { // image has changed and has been stable for a while -> use it as new sample
           image(out, 0, 0);
-          out.save("sample.png");
+          out.save("data/sample.png");
           newImage = true;
           println("NEW IMAGE SAVED");
           counterImageChanging = 0;
