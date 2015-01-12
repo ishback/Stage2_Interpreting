@@ -1,58 +1,72 @@
+import java.awt.Rectangle;
+
 class Image {
-  String filename;
-  PImage imgSmall;
-  PImage imgLarge;
-  PImage scaled;
-  PImage dest;
-  float maxX = 0;
-  float minX = width;
-  float maxY = 0;
-  float minY = height;
-  float w;
-  float h;
-  int lowResWidth;
-  int lowResHeight;
-  //float ratio;
-  PVector cog; // center of gravity of the image
-  PVector centering; // stores the vector that centers with the sample
-  ArrayList<PVector> whitePix;
-  ArrayList<PVector> whitePixCentered;
+  public String filename;
+  PImage pImage;
+  PVector center = new PVector();
+  Rectangle bb = new Rectangle();
+  ArrayList<PVector> whitePix = new ArrayList<PVector>();
+  
+  
+//  
+//  PImage imgSmall;
+//  PImage imgLarge;
+//  PImage imgResized;
+//  PImage dest;
+//  float maxX = 0;
+//  float minX = width;
+//  float maxY = 0;
+//  float minY = height;
+//  float w;
+//  float h;
+//  int lowResWidth;
+//  int lowResHeight;
+//  //float ratio;
+//  PVector cog; // center of gravity of the image
+//  PVector centering; // stores the vector that centers with the sample
+//  ArrayList<PVector> whitePix;
+//  ArrayList<PVector> whitePixCentered;
   
   Image() { 
   }
   
-  void reset(){
-
-    maxX = 0;
-    minX = imgSmall.width;
-    maxY = 0;
-    minY = imgSmall.height;
+  Image(PImage image) { 
+    pImage = image;
   }
   
-  void update() {
-    
-    println(filename);
-    imgSmall = loadImage(filename);
-    imgLarge = loadImage(filename);
-    lowResWidth = int(width / ratio);
-    lowResHeight = int(height / ratio);
-    println("lowResWidth: " + lowResWidth);
-    println("lowResHeight: " + lowResHeight);
-    // keep the high res for display
-    // work with a low res for performance
-    imgSmall.resize(lowResWidth, lowResHeight);
-    imgLarge.resize(width, height);
-    println("smallW: " + imgSmall.width);
-    println("smallH: " + imgSmall.height);
-    imgSmall.filter(THRESHOLD);
-    whitePix = new ArrayList<PVector>();
-    whitePixCentered = new ArrayList<PVector>();
+  Image(PImage image, int w, int h) { 
+    pImage = image;
+    pImage.resize(w,h);
     storeWhitePixels();
-    cog = new PVector(0,0);
+    calculateBB();
+  }
+  
+  int getWidth() {
+    return pImage.width;
+  }
+  
+  int getHeight() {
+    return pImage.height;
+  }
+  
+  ArrayList<PVector> getWhitePixels() {
+    return whitePix;
+  }
+  
+  void storeWhitePixels() {
+    for (int i=0; i < pImage.width*pImage.height; i++){
+      if (red(pImage.pixels[i]) == 255){ //the pixel is white
+        whitePix.add(new PVector(i%pImage.width, i/pImage.width));
+      }
+    }
   }
   
   // calculates features on small Image
-  void calculateFeatures(){
+  void calculateBB(){
+    float maxX = 0;
+    float minX = width;
+    float maxY = 0;
+    float minY = height;
     for (int i=0; i < whitePix.size(); i++){
       PVector dot = new PVector(whitePix.get(i).x, whitePix.get(i).y);
       maxX = max(maxX, dot.x);
@@ -60,96 +74,18 @@ class Image {
       maxY = max(maxY, dot.y);
       minY = min(minY, dot.y);
     }
-    
-    cog.set((maxX - minX)/2 + minX, (maxY - minY)/2 + minY);
-    println("maxX: " + maxX);
-    println("minX: " + minX);
-    println("maxY: " + maxY);
-    println("minY: " + minY);
-    println(cog);
+    bb.setBounds(int(minX),int(minY),int(maxX-minX),int(maxY-minY));
+    center.x = (float)bb.getCenterX();
+    center.y = (float)bb.getCenterY();
   }
   
-  void displayFeatures(color c){
-    stroke(c);
-    noFill();
-    rect((minX+centering.x)*ratio, (minY+centering.y)*ratio, (maxX-minX)*ratio, (maxY-minY)*ratio);
-    noStroke();
-    fill(c);
-    ellipse((cog.x + centering.x)*ratio, (cog.y + centering.y)*ratio, 10, 10);
+  PVector getCenter() {
+    return center;
   }
   
-  void displayFeaturesSmall(color c){
-    pushMatrix();
-    translate(centering.x, centering.y);
-    stroke(c);
-    noFill();
-    rect(minX, minY, maxX-minX, maxY-minY);
-    noStroke();
-    fill(c);
-    //ellipse(cog.x, cog.y, 10, 10);
-    popMatrix();
-  }
-  
-  void displaySmall(color c){
-    tint(255, 126);
-    image(imgSmall, 0, 0);
-  }
-  
-  void display(int posX, int posY, color c){
+  void display(color c) {
     tint(c);
-    image(imgLarge, posX, posY);
-    
-    if (debugView){
-      stroke(c);
-      noFill();
-      //rect(posX, posY, width, height);
-      ellipse((cog.x + centering.x)*ratio, (cog.y + centering.y)*ratio, 15, 15);
-    }
-  }
-  
-  void displayWhitePixCentered(){
-    for (int i = 0; i < whitePixCentered.size(); i++){
-      PVector p = whitePixCentered.get(i);
-      //int loc = int(p.x + p.y*lowResWidth);
-      //dest.pixels[loc] = color(255);
-      stroke(255);
-      point(p.x, p.y);
-    }
-  }
-  
-  void displayWhitePix(){
-    displaySmall(255);
-    for (int i = 0; i < whitePix.size(); i++){
-      PVector p = whitePix.get(i);
-      //int loc = int(p.x + p.y*lowResWidth);
-      //dest.pixels[loc] = color(255);
-      stroke(255);
-      point(p.x, p.y);
-    }
-  }
-  
-  void storeWhitePixels(){
-    for (int i=0; i < imgSmall.width*imgSmall.height; i++){
-      if (red(imgSmall.pixels[i]) == 255){ //the pixel is white
-        whitePix.add(new PVector(i%imgSmall.width, i/imgSmall.width));
-      }
-    }
-  }
-  
-  void calcCentering(PVector cogSample){
-    centering = new PVector(cogSample.x, cogSample.y);
-    centering.sub(cog);
-  }
-  
-  void centerImage(PVector center){
-    whitePixCentered.clear();
-    for (int i=0; i < whitePix.size() ; i++){
-      //PVector temp = whitePix.get(i); //this doesn't make a copy
-      PVector temp = whitePix.get(i).get(); //this makes a copy
-      temp.add(center);
-      temp.sub(cog);
-      
-      whitePixCentered.add(temp);
-    }
+    imageMode(CENTER);
+    image(pImage, center.x, center.y);
   }
 }
