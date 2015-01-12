@@ -27,7 +27,7 @@ class Image {
     
     smlImage = loadImage(filename);
     // resize to ratio
-    smlImage.resize(pImage.width/ratio,pImage.width/ratio);
+    smlImage.resize(pImage.width/ratio, pImage.height/ratio);
     // store the white pixels so we can calculate bb and crop
     storeWhitePixels(smlImage);
     
@@ -35,6 +35,7 @@ class Image {
     calculateBB();
     cropToBB();
     // store new white pixel locations based on cropped image
+    whitePix.clear();
     storeWhitePixels(croppedImage);
   }
   
@@ -109,14 +110,15 @@ class Image {
   
   PVector getResizeRatio() {
     PVector resizeRatio = new PVector();
-    resizeRatio.x = resizedImage.width / croppedImage.width;
-    resizeRatio.y = resizedImage.height / croppedImage.height;
+    resizeRatio.x = float(resizedImage.width) / float(croppedImage.width);
+    resizeRatio.y = float(resizedImage.height) / float(croppedImage.height);
     return resizeRatio;
   }
   
   void generateResized(int w, int h) {
     resizedImage = croppedImage.get(0, 0, croppedImage.width, croppedImage.height);
     resizedImage.resize(w, h);
+    whitePix.clear();
     storeWhitePixels(resizedImage);
   }
   
@@ -147,8 +149,10 @@ class Image {
   
   void displayBigResizedCenteredAt(int x, int y) {
     PImage bigResized = pImage.get(0, 0, origW, origH);
+    println("resizedW: " + resizedImage.width + ", " + "croppedW: " + croppedImage.width);
+    println("resizedH: " + resizedImage.height + ", " + "croppedH: " + croppedImage.height);
     println("resize ratio: " + getResizeRatio());
-    bigResized.resize(int(origW*getResizeRatio().x), int(origH*getResizeRatio().y));
+    bigResized.resize(int(origW * getResizeRatio().x), int(origH * getResizeRatio().y));
     imageMode(CENTER);
     PVector centerShift = new PVector();
     centerShift.set(originalCenterToCroppedCenter);
@@ -156,5 +160,33 @@ class Image {
     centerShift.x = centerShift.x * getResizeRatio().x;
     centerShift.y = centerShift.y * getResizeRatio().y;
     image(bigResized, x+centerShift.x, y+centerShift.y);
+  }
+  
+  void displayWhitePixelsCroppedCenteredAt(int x, int y){
+    PImage imgWhitePix = createImage(croppedImage.width, croppedImage.height, RGB);
+    color w = color(255);
+    imgWhitePix.loadPixels();
+    for (int i=0; i < whitePix.size(); i++){
+      imgWhitePix.set(int(whitePix.get(i).x), int(whitePix.get(i).y), w);
+    }
+    imgWhitePix.updatePixels();
+    imageMode(CENTER);
+    tint(255, 100);
+    image(imgWhitePix, x, y);
+    
+  }
+  
+  void displayWhitePixelsResizedCenteredAt(int x, int y){
+    PImage imgWhitePix = createImage(resizedImage.width, resizedImage.height, ARGB);
+    color w = color(255, 100);
+    imgWhitePix.loadPixels();
+    for (int i=0; i < whitePix.size(); i++){
+      imgWhitePix.set(int(whitePix.get(i).x), int(whitePix.get(i).y), w);
+    }
+    imgWhitePix.updatePixels();
+    imageMode(CENTER);
+    tint(255, 100);
+    image(imgWhitePix, x, y);
+    
   }
 }
