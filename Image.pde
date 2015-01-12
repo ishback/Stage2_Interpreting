@@ -126,17 +126,20 @@ class Image {
     tint(c);
     imageMode(CENTER);
     image(smlImage, center.x, center.y);
+    imageMode(CORNER);
   }
   
   void displaySmallCenteredAt(color c) {
     tint(c);
     imageMode(CENTER);
     image(smlImage, center.x, center.y);
+    imageMode(CORNER);
   }
   
   void displayCroppedCenteredAt(int x, int y) {
     imageMode(CENTER);
     image(croppedImage, x, y);
+    imageMode(CORNER);
   }
   
   void displayBigCenteredAt(int x, int y) {
@@ -145,6 +148,7 @@ class Image {
     centerShift.set(originalCenterToCroppedCenter);
     centerShift.mult(ratio);
     image(pImage, x+centerShift.x, y+centerShift.y);
+    imageMode(CORNER);
   }
   
   void displayBigResizedCenteredAt(int x, int y) {
@@ -160,6 +164,7 @@ class Image {
     centerShift.x = centerShift.x * getResizeRatio().x;
     centerShift.y = centerShift.y * getResizeRatio().y;
     image(bigResized, x+centerShift.x, y+centerShift.y);
+    imageMode(CORNER);
   }
   
   void displayWhitePixelsCroppedCenteredAt(int x, int y){
@@ -173,7 +178,7 @@ class Image {
     imageMode(CENTER);
     tint(255, 100);
     image(imgWhitePix, x, y);
-    
+    imageMode(CORNER);
   }
   
   void displayWhitePixelsResizedCenteredAt(int x, int y){
@@ -187,6 +192,6 @@ class Image {
     imageMode(CENTER);
     tint(255, 100);
     image(imgWhitePix, x, y);
-    
+    imageMode(CORNER);
   }
 }

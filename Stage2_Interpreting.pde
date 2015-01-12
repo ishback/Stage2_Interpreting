@@ -30,7 +30,7 @@ FloatList distancesR; //reverse order
 FloatList diffDistances; //absolute value of the d-dR
 FloatList definitive;
 
-int ratio = 4;
+int ratio = 6;
 
 color green = color(0, 255, 0);
 color ghost = color(255, 50);
@@ -45,23 +45,31 @@ int currentModelIndex = 0;
 int closestModel = 0;
 int nearest;
 
+// these are for ratio=4;
+//int confidenceMin = 5000;
+//int confidenceMin = 60000;
+// these are for ratio=6;
+int confidenceMin = 4000;
+int confidenceMax = 15000;
 float confidence = 0;
 float confidenceThres = 80;
 float confidenceStep = 0;
+float paramEasing = 0.05;
 int counter = 0;
-int counterMax = 100;
+int counterMax = 70;
 int counterFound = 0;
-int counterFoundMax = 250;
+int counterFoundMax = 210;
 int counterCursor = 0;
-int counterCursorMax = 60;
+int counterCursorMax = 35;
 int counterWatching = 0;
 int counterWatchingMax = 10;
 int counterImageChanging = 0;
 int counterImageChangingMax = 10; // freq of checking new image is counterWatchingMax*counterImageChangingMax
 int counterTransitioning = 0;
-int counterTransitioningWait1 = 140;
-int counterTransitioningFade = 190;
-int counterTransitioningWait2 = 220;
+int alphaFading = 8; // increase to darken
+int counterTransitioningWait1 = 80;
+int counterTransitioningFade = 120;
+int counterTransitioningWait2 = 140;
 int prevNumPixels = 0;
 int numPixels = 0;
 int thresNumPixels = 5000;
@@ -206,7 +214,7 @@ void draw() {
     if (counterTransitioning <= counterTransitioningWait1){
       counterTransitioning++;
     } else if (counterTransitioning <= counterTransitioningFade){
-      fill(0, 7);
+      fill(0, alphaFading);
       rect(0, 0, width, height);
       counterTransitioning++;
     } else if (counterTransitioning <= counterTransitioningWait2){
@@ -253,7 +261,7 @@ void draw() {
       
       // calculate distances to sample
       calculateDist(currentModelIndex);
-      confidence = map(definitive.get(currentModelIndex), 5000, 60000, 100, 0);
+      confidence = map(definitive.get(currentModelIndex), confidenceMin, confidenceMax, 100, 0);
       if (confidence > 100){
         confidence = 100;
       } else if (confidence < 0){
@@ -289,6 +297,7 @@ void draw() {
       matchFound = true;
       counter = 0;
       counterFound = 0;
+      counterCursor = 0;
       currentModelIndex = 0;
       }
     }
@@ -309,7 +318,7 @@ void draw() {
     if (counterFound < counterFoundMax*0.5){
       //models.get(currentModelIndex).display(int(models.get(currentModelIndex).centering.x)*ratio, int(models.get(currentModelIndex).centering.y)*ratio, white);
       background(0);
-      if (useThreshold){
+      if (useThreshold && confidences.size() > 0){
         if (confidences.get(closestModel) >= confidenceThres){
           displayMatchText();
         } else {
@@ -395,7 +404,7 @@ void drawConfidence() {
   stroke(0, 255, 0);
   line(width-40, map(confidenceThres, 0, 100, height-40, 40), width-10, map(confidenceThres, 0, 100, height-40, 40));
   fill(0, 255, 0);
-  confidenceStep = confidenceStep + (confidence - confidenceStep)*0.05;
+  confidenceStep = confidenceStep + (confidence - confidenceStep)*paramEasing;
   rect(width-30, height-40, 10, -(map(confidenceStep, 0, 100, 0, height - 80)));
 }
 
