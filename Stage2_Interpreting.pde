@@ -415,7 +415,9 @@ void drawBars(){
     image(models.get(i).smlImage, 20, 45 + i*30, 20, 20);
     if ((i == closestModel) && useThreshold && (confidences.get(i) > confidenceThres)){
       fill(0, 255, 0);
-    } else {
+    } else if (i == closestModel && !useThreshold){
+      fill(0, 255, 0);
+    }
       fill(255);
     }
     if (i == currentModelIndex){
