@@ -18,8 +18,8 @@ OpenCV opencv;
 // A list of all the contours found by OpenCV
 ArrayList<Contour> contours;
 
-int displayW = 1024;
-int displayH = 768;
+int displayW = 1280;
+int displayH = 720;
 int camW = 640;
 int camH = 480;
 
@@ -114,17 +114,17 @@ void setup() {
   println(ards);
   
   // for Mac
-   arduino = new Arduino(this, ards[ards.length - 1], 57600);
+  // arduino = new Arduino(this, ards[ards.length - 1], 57600);
   
   // for Odroid
-  //arduino = new Arduino(this, ards[0], 57600);
+  arduino = new Arduino(this, ards[0], 57600);
   //arduino.pinMode(4, Arduino.INPUT);
 
   // For ODroid
-  //  cam = new Capture(this, 320, 240, "/dev/video0", 30);
+  cam = new Capture(this, 320, 240, "/dev/video0", 30);
 
   // For Mac
-  cam = new Capture(this, camW, camH);
+  //cam = new Capture(this, camW, camH);
   //cam = new Capture(this, 640, 480, "Logitech Camera", 30);
   cam.start();
   
@@ -203,7 +203,7 @@ void draw() {
           confidences.clear();
         } else { // image has changed and has been stable for a while -> use it as new sample
           image(out, 0, 0);
-          //out.save("data/sample.png");
+          out.save("data/sample.png");
           newImage = true;
           println("NEW IMAGE SAVED");
           counterImageChanging = 0;
