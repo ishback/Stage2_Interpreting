@@ -172,7 +172,7 @@ void setup() {
 
 /////////////////////////////////////////////////////////////////////////////  DRAW
 void draw() {
-  
+  noStroke();
   counterWatching++;
   if (counterWatching >= counterWatchingMax){
     if (cam.available()) {
