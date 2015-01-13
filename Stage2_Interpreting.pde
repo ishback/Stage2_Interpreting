@@ -55,8 +55,8 @@ int nearest;
 //int confidenceMin = 5000;
 //int confidenceMin = 60000;
 // these are for ratio=6;
-int confidenceMin = 4000;
-int confidenceMax = 15000;
+int confidenceMin = 10000;
+int confidenceMax = 80000;
 float confidence = 0;
 float confidenceThres = 80;
 float confidenceStep = 0;
@@ -97,11 +97,12 @@ boolean matchFound = false;
 // wait with a cursor until a rectangle blob 'image sent' is detected
 boolean waiting = false;
 // whether or not to invert the thresholded image -- press 'i' to toggle
-boolean invert = true;
+boolean invert = false;
 boolean cursorON = true;
 boolean imageHasChanged = false;
 boolean useThreshold = true;
 boolean buttonDown = false;
+boolean pauseProcess = true;
 int dir; //0 sample against model / 1 model against sample
 
 
@@ -118,10 +119,10 @@ void setup() {
   
   // for Odroid
   arduino = new Arduino(this, ards[0], 57600);
-  //arduino.pinMode(4, Arduino.INPUT);
+  arduino.pinMode(4, Arduino.INPUT);
 
   // For ODroid
-  cam = new Capture(this, 320, 240, "/dev/video0", 30);
+  cam = new Capture(this, camW, camH, "/dev/video0", 30);
 
   // For Mac
   //cam = new Capture(this, camW, camH);
@@ -172,6 +173,18 @@ void setup() {
 
 /////////////////////////////////////////////////////////////////////////////  DRAW
 void draw() {
+  //background(0);
+  
+  if (pauseProcess) {
+    background(0);
+    println("process paused");
+    if (cam.available()) {
+      // read a new frame
+      cam.read();
+      warpImage();
+    }
+    return;
+  }
   
   counterWatching++;
   if (counterWatching >= counterWatchingMax){
@@ -217,6 +230,7 @@ void draw() {
     }
     counterWatching = 0;
   }
+ 
   if (newImage) {
     reset();
     loadNewSample();
@@ -251,7 +265,7 @@ void draw() {
     } else {
       buttonDown = false;
     }
-    println("debugView: " + debugView);
+    println("buttonDown: " + buttonDown);
     
     if (counter == 0) {
       background(0);
@@ -328,7 +342,7 @@ void draw() {
       }
     }
     //if (debugView && counter !=0) {
-    if (debugView || buttonDown) {
+    if (buttonDown) {
       
       //showTrueView();
       //drawConfidence();
@@ -483,13 +497,14 @@ void calculateDiff(int modelNum) {
 
 void calculateDefinitive(int modelNum) {
   definitive.append(distances.get(modelNum) + distancesR.get(modelNum) + diffDistances.get(modelNum));
-//  if (debugView){
-//    pushMatrix();
-//    translate(width - 120, height-40);
-//    fill(255);
-//    text(definitive.get(modelNum), 0, 0);
-//    popMatrix();
-//  }
+  if (debugView){
+    pushMatrix();
+    textFont(f);
+    translate(50, 50);
+    fill(255);
+    text(definitive.get(modelNum), 0, 0);
+    popMatrix();
+  }
 }
 
 float nn (ArrayList<PVector> arraySample, ArrayList<PVector> arrayModel, int pos, int dir) {
@@ -509,7 +524,7 @@ float nn (ArrayList<PVector> arraySample, ArrayList<PVector> arrayModel, int pos
         closest = new PVector(m.x, m.y);
       }
     }
-    if (debugView){
+    if (buttonDown){
       color c;
       if (dir == 0) {
         c = color(0, 255, 0, 30);
@@ -581,12 +596,16 @@ void loadNewSample() {
 void warpImage() {
   // warp the selected region on the input image (cam) to an output image of width x height
   out = attention.focus(cam, cam.width, cam.height);
-  float thresh = map(arduino.analogRead(potPin), 0, 1024, 0, 255);
-  println("pot: " + thresh);
+  int pin = arduino.analogRead(potPin);
+  float thresh = map(pin, 0, 1023, 0, 1.3);
+  println("pot: " + pin + ", " + thresh);
   //float thresh = map(mouseX, 0, height, 0, 1.0);
   out.filter(THRESHOLD, thresh);
   if (invert) {
     out.filter(INVERT);
+  }
+  if (debugView) {
+    image(out, camW, 0);
   }
 }
 
@@ -601,6 +620,9 @@ void keyPressed() {
     camView = true;
   } else if (key == 'D' || key == 'd') {
     debugView = !debugView;
+    background(0);
+  } else if (key == 'P' || key == 'p') {
+    pauseProcess = !pauseProcess;
   }
   // do or don't invert input
   if (key == 'i' || key == 'I') {
