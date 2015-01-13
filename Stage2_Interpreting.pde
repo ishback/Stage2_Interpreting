@@ -1,6 +1,12 @@
 import com.jonwohl.*;
 import processing.video.*;
 import gab.opencv.*;
+import processing.serial.*;
+import cc.arduino.*;
+
+Arduino arduino;
+int buttonPin = 4;
+int potPin = 0;
 
 Attention attention;
 Capture cam;
@@ -95,6 +101,7 @@ boolean invert = true;
 boolean cursorON = true;
 boolean imageHasChanged = false;
 boolean useThreshold = true;
+boolean buttonDown = false;
 int dir; //0 sample against model / 1 model against sample
 
 
@@ -102,6 +109,16 @@ int dir; //0 sample against model / 1 model against sample
 void setup() {
   size(displayW, displayH);
   background(0);
+
+  String[] ards = Arduino.list();
+  println(ards);
+  
+  // for Mac
+   arduino = new Arduino(this, ards[ards.length - 1], 57600);
+  
+  // for Odroid
+  //arduino = new Arduino(this, ards[0], 57600);
+  //arduino.pinMode(4, Arduino.INPUT);
 
   // For ODroid
   //  cam = new Capture(this, 320, 240, "/dev/video0", 30);
@@ -155,6 +172,7 @@ void setup() {
 
 /////////////////////////////////////////////////////////////////////////////  DRAW
 void draw() {
+  
   counterWatching++;
   if (counterWatching >= counterWatchingMax){
     if (cam.available()) {
@@ -226,6 +244,14 @@ void draw() {
     }
   } else if (comparing) {
     //readConfidenceThres();
+    
+      // show behind the scenes in green
+    if (arduino.digitalRead(buttonPin) == Arduino.HIGH){
+      buttonDown = true;
+    } else {
+      buttonDown = false;
+    }
+    println("debugView: " + debugView);
     
     if (counter == 0) {
       background(0);
@@ -302,7 +328,7 @@ void draw() {
       }
     }
     //if (debugView && counter !=0) {
-    if (debugView) {
+    if (debugView || buttonDown) {
       
       //showTrueView();
       //drawConfidence();
@@ -417,7 +443,7 @@ void drawBars(){
       fill(0, 255, 0);
     } else if (i == closestModel && !useThreshold){
       fill(0, 255, 0);
-    }
+    } else {
       fill(255);
     }
     if (i == currentModelIndex){
@@ -555,7 +581,9 @@ void loadNewSample() {
 void warpImage() {
   // warp the selected region on the input image (cam) to an output image of width x height
   out = attention.focus(cam, cam.width, cam.height);
-  float thresh = map(mouseX, 0, height, 0, 1.0);
+  float thresh = map(arduino.analogRead(potPin), 0, 1024, 0, 255);
+  println("pot: " + thresh);
+  //float thresh = map(mouseX, 0, height, 0, 1.0);
   out.filter(THRESHOLD, thresh);
   if (invert) {
     out.filter(INVERT);
