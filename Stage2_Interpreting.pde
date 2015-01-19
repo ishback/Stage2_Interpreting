@@ -55,7 +55,7 @@ int nearest;
 //int confidenceMin = 5000;
 //int confidenceMin = 60000;
 // these are for ratio=6;
-int confidenceMin = 10000;
+int confidenceMin = 5000;
 int confidenceMax = 80000;
 float confidence = 0;
 float confidenceThres = 80;
@@ -78,7 +78,7 @@ int counterTransitioningFade = 120;
 int counterTransitioningWait2 = 140;
 int prevNumPixels = 0;
 int numPixels = 0;
-int thresNumPixels = 7000;
+int thresNumPixels = 9000;
 String name;
 
 ArrayList<Float> confidences;

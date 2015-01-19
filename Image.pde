@@ -117,7 +117,7 @@ class Image {
   
   void generateResized(int w, int h) {
     resizedImage = croppedImage.get(0, 0, croppedImage.width, croppedImage.height);
-    resizedImage.resize(w, h);
+    resizedImage.resize(abs(w)+1, abs(h)+1);
     whitePix.clear();
     storeWhitePixels(resizedImage);
   }
