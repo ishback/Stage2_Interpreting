@@ -2,9 +2,9 @@ import com.jonwohl.*;
 import processing.video.*;
 import gab.opencv.*;
 import processing.serial.*;
-import cc.arduino.*;
+//import cc.arduino.*;
 
-Arduino arduino;
+//Arduino arduino;
 int buttonPin = 4;
 int potPin = 0;
 
@@ -18,8 +18,8 @@ OpenCV opencv;
 // A list of all the contours found by OpenCV
 ArrayList<Contour> contours;
 
-int displayW = 1280;
-int displayH = 720;
+int displayW = 1024;
+int displayH = 768;
 int camW = 640;
 int camH = 480;
 
@@ -111,21 +111,21 @@ void setup() {
   size(displayW, displayH);
   background(0);
 
-  String[] ards = Arduino.list();
+//  String[] ards = Arduino.list();
   //println(ards);
   
   // for Mac
   // arduino = new Arduino(this, ards[ards.length - 1], 57600);
   
   // for Odroid
-  arduino = new Arduino(this, ards[0], 57600);
-  arduino.pinMode(4, Arduino.INPUT);
+//  arduino = new Arduino(this, ards[0], 57600);
+//  arduino.pinMode(4, Arduino.INPUT);
 
   // For ODroid
   cam = new Capture(this, camW, camH, "/dev/video0", 30);
 
   // For Mac
-  //cam = new Capture(this, camW, camH);
+//  cam = new Capture(this, camW, camH);
   //cam = new Capture(this, 640, 480, "Logitech Camera", 30);
   cam.start();
   
@@ -260,11 +260,11 @@ void draw() {
     //readConfidenceThres();
     
       // show behind the scenes in green
-    if (arduino.digitalRead(buttonPin) == Arduino.HIGH){
-      buttonDown = true;
-    } else {
-      buttonDown = false;
-    }
+//    if (arduino.digitalRead(buttonPin) == Arduino.HIGH){
+//      buttonDown = true;
+//    } else {
+//      buttonDown = false;
+//    }
     //println("buttonDown: " + buttonDown);
     
     if (counter == 0) {
@@ -596,8 +596,8 @@ void loadNewSample() {
 void warpImage() {
   // warp the selected region on the input image (cam) to an output image of width x height
   out = attention.focus(cam, cam.width, cam.height);
-  int pin = arduino.analogRead(potPin);
-  float thresh = map(pin, 0, 1023, 0, 1.3);
+//  int pin = arduino.analogRead(potPin);
+  float thresh = map(mouseY, 0, 768, 0, 1.3);
   //println("pot: " + pin + ", " + thresh);
   //float thresh = map(mouseX, 0, height, 0, 1.0);
   out.filter(THRESHOLD, thresh);
@@ -624,6 +624,11 @@ void keyPressed() {
   } else if (key == 'P' || key == 'p') {
     pauseProcess = !pauseProcess;
   }
+  
+  if (key == 'b' || key == 'B') {
+    buttonDown = !buttonDown;
+  }
+  
   // do or don't invert input
   if (key == 'i' || key == 'I') {
     invert = !invert;
